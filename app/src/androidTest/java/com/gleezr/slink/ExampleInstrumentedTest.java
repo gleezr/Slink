@@ -11,7 +11,6 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 
-import static android.support.test.InstrumentationRegistry.getTargetContext;
 import static org.junit.Assert.*;
 
 /**
