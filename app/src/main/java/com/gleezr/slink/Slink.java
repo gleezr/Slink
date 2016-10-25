@@ -16,9 +16,9 @@
 
 package com.gleezr.slink;
 
-import com.facebook.crypto.Entity;
-import com.facebook.crypto.exception.CryptoInitializationException;
-import com.facebook.crypto.exception.KeyChainException;
+
+import static java.lang.System.out;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -27,16 +27,17 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.Nullable;
-//import android.support.test.espresso.core.deps.guava.collect.Maps;
-//import android.support.test.espresso.core.deps.guava.collect.Maps;
 import android.system.StructStat;
 import android.util.Log;
-
 
 import com.facebook.android.crypto.keychain.AndroidConceal;
 import com.facebook.android.crypto.keychain.SharedPrefsBackedKeyChain;
 import com.facebook.crypto.Crypto;
 import com.facebook.crypto.CryptoConfig;
+import com.facebook.crypto.Entity;
+
+import com.facebook.crypto.exception.CryptoInitializationException;
+import com.facebook.crypto.exception.KeyChainException;
 import com.facebook.crypto.keychain.KeyChain;
 
 import java.io.BufferedInputStream;
@@ -57,8 +58,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
-
-import static java.lang.System.out;
 
 final class Slink implements SharedPreferences {
     private static final String TAG = "Slink2";
@@ -98,8 +97,6 @@ final class Slink implements SharedPreferences {
         // Creates a new Crypto valueect with default implementations of a key chain
         keyChain = new SharedPrefsBackedKeyChain(this.context, CryptoConfig.KEY_256);
         crypto = AndroidConceal.get().createDefaultCrypto(keyChain);
-
-
         mFile = file;
         mBackupFile = makeBackupFile(file);
         mMode = mode;
@@ -185,8 +182,6 @@ final class Slink implements SharedPreferences {
                 }.getType();
 
                 mMap = gson.fromJson(preferencesString, stringStringMap);
-
-
             } catch (IOException e) {
                 Log.w(TAG, "getSharedPreferences", e);
             } finally {
@@ -229,7 +224,9 @@ final class Slink implements SharedPreferences {
         synchronized (this) {
             if (mDiskWritesInFlight > 0) {
                 // If we know we caused it, it's not unexpected.
-                if (DEBUG) Log.d(TAG, "disk write in flight, not unexpected.");
+                if (DEBUG) {
+                    Log.d(TAG, "disk write in flight, not unexpected.");
+                }
                 return false;
             }
         }
@@ -237,13 +234,15 @@ final class Slink implements SharedPreferences {
         return false;
     }
 
-    public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+    public void registerOnSharedPreferenceChangeListener(
+            OnSharedPreferenceChangeListener listener) {
         synchronized (this) {
             mListeners.put(listener, mContent);
         }
     }
 
-    public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+    public void unregisterOnSharedPreferenceChangeListener(
+            OnSharedPreferenceChangeListener listener) {
         synchronized (this) {
             mListeners.remove(listener);
         }
@@ -259,6 +258,7 @@ final class Slink implements SharedPreferences {
             try {
                 wait();
             } catch (InterruptedException unused) {
+                //Empty
             }
         }
     }
@@ -426,6 +426,7 @@ final class Slink implements SharedPreferences {
                     try {
                         mcr.writtenToDiskLatch.await();
                     } catch (InterruptedException ignored) {
+                        //Empty
                     }
                 }
             };
@@ -528,8 +529,8 @@ final class Slink implements SharedPreferences {
         }
 
         private void notifyListeners(final MemoryCommitResult mcr) {
-            if (mcr.listeners == null || mcr.keysModified == null ||
-                    mcr.keysModified.size() == 0) {
+            if (mcr.listeners == null || mcr.keysModified == null
+                    || mcr.keysModified.size() == 0) {
                 return;
             }
             if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -555,7 +556,6 @@ final class Slink implements SharedPreferences {
     /**
      * Enqueue an already-committed-to-memory result to be written
      * to disk.
-     * <p>
      * They will be written to disk one-at-a-time in the order
      * that they're enqueued.
      *
@@ -568,8 +568,7 @@ final class Slink implements SharedPreferences {
      *                          we catch them in userdebug StrictMode reports to convert
      *                          them where possible to apply() ...)
      */
-    private void enqueueDiskWrite(final MemoryCommitResult mcr,
-                                  final Runnable postWriteRunnable) {
+    private void enqueueDiskWrite(final MemoryCommitResult mcr, final Runnable postWriteRunnable) {
         final Runnable writeToDiskRunnable = new Runnable() {
             public void run() {
                 synchronized (mWritingToDiskLock) {
@@ -658,11 +657,11 @@ final class Slink implements SharedPreferences {
         // from the backup.
         try {
             FileOutputStream str = createFileOutputStream(mFile);
+
             if (str == null) {
                 mcr.setDiskWriteResult(false);
                 return;
             }
-
 
             Type stringStringMap = new TypeToken<HashMap<String, String>>() {
             }.getType();
