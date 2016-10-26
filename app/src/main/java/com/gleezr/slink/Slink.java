@@ -178,7 +178,7 @@ final class Slink implements SharedPreferences {
 
                 String preferencesString = new String(buffer).trim();
 
-                Type stringStringMap = new TypeToken<HashMap<String, String>>() {
+                Type stringStringMap = new TypeToken<HashMap<String, Object>>() {
                 }.getType();
 
                 mMap = gson.fromJson(preferencesString, stringStringMap);
@@ -663,7 +663,7 @@ final class Slink implements SharedPreferences {
                 return;
             }
 
-            Type stringStringMap = new TypeToken<HashMap<String, String>>() {
+            Type stringStringMap = new TypeToken<HashMap<String, Object>>() {
             }.getType();
             String map = gson.toJson(mcr.mapToWriteToDisk, stringStringMap);
 
