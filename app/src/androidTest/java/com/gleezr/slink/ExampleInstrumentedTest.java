@@ -7,14 +7,27 @@ import android.content.SharedPreferences;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
+import static java.lang.System.out;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
@@ -30,12 +43,15 @@ public class ExampleInstrumentedTest {
     static Context cntxt;
     static SharedPreferences slnk;
     static SharedPreferences.Editor edt;
+    private static String FILE_NAME = "";
 
     @BeforeClass
     public static void useAppContext() throws Exception {
         cntxt = InstrumentationRegistry.getTargetContext();
 
-        slnk = new Slink(new File(cntxt.getFilesDir() + "Test4"),cntxt.MODE_PRIVATE, cntxt);
+        FILE_NAME = cntxt.getFilesDir() + "Test4";
+
+        slnk = SlinkManager.getSlink(cntxt,  FILE_NAME);
 
         edt = slnk.edit();
     }
@@ -152,4 +168,55 @@ public class ExampleInstrumentedTest {
 
         assertTrue(!slnk.contains("MyFirstInteger"));
     }
+
+    @Test
+    public void checkIfDataIsEncrypted() throws FileNotFoundException {
+        edt.clear();
+
+        edt.commit();
+
+        edt.putInt("MyInt", 1);
+
+        File f = new File(FILE_NAME);
+
+        BufferedInputStream is = new BufferedInputStream(new FileInputStream(f), 16*1024);
+
+        int read;
+        byte[] buffer = new byte[1024];
+
+        // You must read the entire stream to completion.
+        // The verification is done at the end of the stream.
+        // Thus not reading till the end of the stream will cause
+        // a security bug. For safety, you should not
+        // use any of the data until it's been fully read or throw
+        // away the data if an exception occurs.
+        try {
+            while ((read = is.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            is.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        String preferencesString = new String(buffer).trim();
+
+        Type stringStringMap = new TypeToken<HashMap<String, Object>>() {}.getType();
+
+        boolean b = false;
+
+        try
+        {
+            Map<String, Object> mMap = new Gson().fromJson(preferencesString, stringStringMap);
+        }
+        catch(JsonSyntaxException e)
+        {
+           b = true;
+        }
+
+        assertEquals(true, b);
+    }
+
+
+
 }

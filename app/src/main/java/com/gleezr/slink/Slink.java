@@ -149,12 +149,9 @@ final class Slink implements SharedPreferences {
                     Entity e = Entity.create(cipherEntity);
                     inputStream = crypto.getCipherInputStream(str, e);
                     str = new BufferedInputStream(inputStream);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (CryptoInitializationException e) {
-                    e.printStackTrace();
-                } catch (KeyChainException e) {
-                    e.printStackTrace();
+                } catch (IOException | CryptoInitializationException | KeyChainException  e) {
+                    Log.e(TAG, "loadFromDisk could not open inputstream to file");
+                    return;
                 }
 
                 // Read into a byte array.
@@ -171,9 +168,14 @@ final class Slink implements SharedPreferences {
                     while ((read = str.read(buffer)) != -1) {
                         out.write(buffer, 0, read);
                     }
-                    inputStream.close();
+
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.e (TAG, "loadFromDisk Couldnt read from file");
+                    return;
+                }
+                finally {
+                    inputStream.close();
+                    str.close();
                 }
 
                 String preferencesString = new String(buffer).trim();
@@ -188,7 +190,8 @@ final class Slink implements SharedPreferences {
                 try {
                     str.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.e (TAG, "loadFromDisk Couldnt close file");
+                    return;
                 }
             }
         }
@@ -684,12 +687,9 @@ final class Slink implements SharedPreferences {
                 outputStream = crypto.getCipherOutputStream(
                         fileStream,
                         Entity.create(cipherEntity));
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (CryptoInitializationException e) {
-                e.printStackTrace();
-            } catch (KeyChainException e) {
-                e.printStackTrace();
+            } catch (IOException | CryptoInitializationException | KeyChainException e) {
+                Log.e (TAG, "writeToFile Couldnt get CypherOutputStream");
+                return;
             }
 //
 //        byte[] b = new byte[1024 - map.getBytes().length];
@@ -702,7 +702,8 @@ final class Slink implements SharedPreferences {
                 outputStream.write(map.getBytes());
                 outputStream.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e (TAG, "writeToFile Couldnt write to file");
+                return;
             }
 
             str.close();

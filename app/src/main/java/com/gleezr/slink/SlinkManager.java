@@ -40,7 +40,8 @@ public class SlinkManager {
         if (Slinks.get(DEFAULT_SLINK_NAME) == null) {
 
             File file = new File(context.getFilesDir(), DEFAULT_SLINK_NAME);
-
+            file.setReadable(true);
+            file.setWritable(true);
             Slink newSlinkTemp = new Slink(file, MODE_PRIVATE, context);
             Slinks.put(DEFAULT_SLINK_NAME, newSlinkTemp);
         }
