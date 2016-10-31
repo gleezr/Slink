@@ -59,8 +59,8 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 
-final class Slink implements SharedPreferences {
-    private static final String TAG = "Slink2";
+public final class Slink implements SharedPreferences {
+    private static final String TAG = "Slink";
     private static final boolean DEBUG = false;
 
     // Lock ordering rules:
@@ -86,13 +86,21 @@ final class Slink implements SharedPreferences {
     private final WeakHashMap<OnSharedPreferenceChangeListener, Object> mListeners =
             new WeakHashMap<OnSharedPreferenceChangeListener, Object>();
 
-    Slink(File file, int mode, Context cntxt) {
+
+    /**
+     * Excplicitly create a Slink instance.
+     * Unless particulary needed refer to the SlinkManager to get a Slink instance.
+     * @param file The SharedPreferences file
+     * @param mode  Unused
+     * @param context The context of the calling activity
+     */
+    public Slink(File file, int mode, Context context) {
 
         gson = new Gson();
 
         cipherEntity = cipherEntity + file.getName();
 
-        this.context = cntxt;
+        this.context = context;
 
         // Creates a new Crypto valueect with default implementations of a key chain
         keyChain = new SharedPrefsBackedKeyChain(this.context, CryptoConfig.KEY_256);
@@ -136,27 +144,30 @@ final class Slink implements SharedPreferences {
         StructStat stat = null;
         if (mFile.canRead()) {
             BufferedInputStream str = null;
-            try {
-                str = new BufferedInputStream(
-                        new FileInputStream(mFile), 16 * 1024);
 
-                // Creates an input stream which decrypts the data as
-                // it is read from it.
-                InputStream inputStream = null;
+            // Creates an input stream which decrypts the data as
+            // it is read from it.
+            InputStream inputStream = null;
+
+            try {
+                str = new BufferedInputStream(new FileInputStream(mFile), 16 * 1024);
+
                 Gson gson = new Gson();
 
                 try {
                     Entity e = Entity.create(cipherEntity);
                     inputStream = crypto.getCipherInputStream(str, e);
                     str = new BufferedInputStream(inputStream);
-                } catch (IOException | CryptoInitializationException | KeyChainException  e) {
+                } catch (IOException | CryptoInitializationException | KeyChainException e) {
                     Log.e(TAG, "loadFromDisk could not open inputstream to file");
+                    str.close();
+                    inputStream.close();
                     return;
                 }
 
                 // Read into a byte array.
                 int read;
-                byte[] buffer = new byte[1024];
+                byte[] buffer = new byte[16 * 1024];
 
                 // You must read the entire stream to completion.
                 // The verification is done at the end of the stream.
@@ -164,24 +175,13 @@ final class Slink implements SharedPreferences {
                 // a security bug. For safety, you should not
                 // use any of the data until it's been fully read or throw
                 // away the data if an exception occurs.
-                try {
-                    while ((read = str.read(buffer)) != -1) {
-                        out.write(buffer, 0, read);
-                    }
-
-                } catch (IOException e) {
-                    Log.e (TAG, "loadFromDisk Couldnt read from file");
-                    return;
-                }
-                finally {
-                    inputStream.close();
-                    str.close();
+                while ((read = str.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
                 }
 
                 String preferencesString = new String(buffer).trim();
 
-                Type stringStringMap = new TypeToken<HashMap<String, Object>>() {
-                }.getType();
+                Type stringStringMap = new TypeToken<HashMap<String, Object>>() { }.getType();
 
                 mMap = gson.fromJson(preferencesString, stringStringMap);
             } catch (IOException e) {
@@ -189,8 +189,9 @@ final class Slink implements SharedPreferences {
             } finally {
                 try {
                     str.close();
+                    inputStream.close();
                 } catch (IOException e) {
-                    Log.e (TAG, "loadFromDisk Couldnt close file");
+                    Log.e(TAG, "loadFromDisk Couldnt close file");
                     return;
                 }
             }
@@ -237,6 +238,10 @@ final class Slink implements SharedPreferences {
         return false;
     }
 
+    /**
+     * Registers a callback to be invoked when a change happens to a preference.
+     * @param listener The callback that will run.
+     */
     public void registerOnSharedPreferenceChangeListener(
             OnSharedPreferenceChangeListener listener) {
         synchronized (this) {
@@ -244,6 +249,10 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Unregisters a previous callback.
+     * @param listener The callback that should be unregistered.
+     */
     public void unregisterOnSharedPreferenceChangeListener(
             OnSharedPreferenceChangeListener listener) {
         synchronized (this) {
@@ -266,6 +275,12 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve all values from the preferences.
+     * Note that you must not modify the collection returned by this method, or alter any of
+     * its contents. The consistency of your stored data is not guaranteed if you do.
+     * @return Returns a map containing a list of pairs key/value representing the preferences.
+     */
     public Map<String, ?> getAll() {
         synchronized (this) {
             awaitLoadedLocked();
@@ -274,6 +289,13 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve a String value from the preferences.
+     * @param key The name of the preference to retrieve
+     * @param defValue Value to return if this preference does not exist.
+     * @return Returns the preference value if it exists, or defValue. Throws ClassCastException.
+     *         If there is a preference with this name that is not a String.
+     */
     @Nullable
     public String getString(String key, @Nullable String defValue) {
         synchronized (this) {
@@ -283,6 +305,16 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve a set of String values from the preferences.
+     * Note that you must not modify the set instance returned by this call. The consistency of
+     * the stored data is not guaranteed if you do, nor is your ability to modify the instance
+     * at all.
+     * @param key The name of the preference to retrieve.
+     * @param defValues Values to return if this preference does not exist.
+     * @return Returns the preference values if they exist, or defValues. Throws ClassCastException
+     *         if there is a preference with this name that is not a Set.
+     */
     @Nullable
     public Set<String> getStringSet(String key, @Nullable Set<String> defValues) {
         synchronized (this) {
@@ -292,6 +324,13 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve an int value from the preferences.
+     * @param key The name of the preference to retrieve.
+     * @param defValue Value to return if this preference does not exist.
+     * @return Returns the preference value if it exists, or defValue. Throws
+     *         ClassCastException if there is a preference with this name that is not an int.
+     */
     public int getInt(String key, int defValue) {
         synchronized (this) {
             awaitLoadedLocked();
@@ -300,6 +339,13 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve a long value from the preferences.
+     * @param key The name of the preference to retrieve.
+     * @param defValue Value to return if this preference does not exist.
+     * @return Returns the preference value if it exists, or defValue. Throws
+     *         ClassCastException if there is a preference with this name that is not a long.
+     */
     public long getLong(String key, long defValue) {
         synchronized (this) {
             awaitLoadedLocked();
@@ -308,6 +354,13 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve a float value from the preferences.
+     * @param key The name of the preference to retrieve.
+     * @param defValue Value to return if this preference does not exist.
+     * @return Returns the preference value if it exists, or defValue. Throws
+     *         ClassCastException if there is a preference with this name that is not a float.
+     */
     public float getFloat(String key, float defValue) {
         synchronized (this) {
             awaitLoadedLocked();
@@ -316,6 +369,13 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Retrieve a boolean value from the preferences.
+     * @param key The name of the preference to retrieve.
+     * @param defValue Value to return if this preference does not exist.
+     * @return Returns the preference value if it exists, or defValue. Throws ClassCastException
+     *         if there is a preference with this name that is not a boolean.
+     */
     public boolean getBoolean(String key, boolean defValue) {
         synchronized (this) {
             awaitLoadedLocked();
@@ -324,6 +384,11 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Checks whether the preferences contains a preference.
+     * @param key The name of the preference to check.
+     * @return Returns true if the preference exists in the preferences, otherwise false.
+     */
     public boolean contains(String key) {
         synchronized (this) {
             awaitLoadedLocked();
@@ -331,6 +396,14 @@ final class Slink implements SharedPreferences {
         }
     }
 
+    /**
+     * Create a new Editor for these preferences, through which you can make modifications to
+     * the data in the preferences and atomically commit those changes back to the
+     * SharedPreferences object. Note that you must call commit() to have any changes you perform
+     * in the Editor actually show up in the SharedPreferences.
+     * @return Returns a new instance of the SharedPreferences.Editor interface, allowing
+     *         you to modify the values in this SharedPreferences object.
+     */
     public Editor edit() {
         // TODO: remove the need to call awaitLoadedLocked() when
         // requesting an editor.  will require some work on the
@@ -365,6 +438,14 @@ final class Slink implements SharedPreferences {
         private final Map<String, Object> mModified = new HashMap<>();
         private boolean mClear = false;
 
+        /**
+         * Set a String value in the preferences editor, to be written back once commit()
+         * or apply() are called.
+         * @param key The name of the preference to modify.
+         * @param value The new value for the preference. Passing null for this argument is
+         *              equivalent to calling remove(String) with this key.
+         * @return The Editor object for chaining purposes
+         */
         public Editor putString(String key, @Nullable String value) {
             synchronized (this) {
                 mModified.put(key, value);
@@ -372,6 +453,14 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Set a set of String values in the preferences editor, to be written back once commit()
+         * or apply() is called.
+         * @param key The name of the preference to modify.
+         * @param values The set of new values for the preference. Passing null for this argument
+         *               is equivalent to calling remove(String) with this key.
+         * @return The Editor object for chaining purposes
+         */
         public Editor putStringSet(String key, @Nullable Set<String> values) {
             synchronized (this) {
                 mModified.put(key,
@@ -380,6 +469,14 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Set an int value in the preferences editor, to be written back once commit()
+         * or apply() are called.
+         * @param key The name of the preference to modify.
+         * @param value The new value for the preference.
+         * @return Returns a reference to the same Editor object, so you can chain put
+         *         calls together.
+         */
         public Editor putInt(String key, int value) {
             synchronized (this) {
                 mModified.put(key, value);
@@ -387,6 +484,14 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Set a long value in the preferences editor, to be written back once commit()
+         * or apply() are called.
+         * @param key The name of the preference to modify.
+         * @param value The new value for the preference.
+         * @return Returns a reference to the same Editor object, so you can
+         *         chain put calls together.
+         */
         public Editor putLong(String key, long value) {
             synchronized (this) {
                 mModified.put(key, value);
@@ -394,6 +499,13 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Returns a reference to the same Editor object, so you can chain put calls together.
+         * @param key The name of the preference to modify.
+         * @param value The new value for the preference.
+         * @return Returns a reference to the same Editor object, so you can chain
+         *         put calls together.
+         */
         public Editor putFloat(String key, float value) {
             synchronized (this) {
                 mModified.put(key, value);
@@ -401,6 +513,14 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Set a boolean value in the preferences editor, to be written back once commit()
+         * or apply() are called.
+         * @param key The name of the preference to modify.
+         * @param value The new value for the preference.
+         * @return Returns a reference to the same Editor object,
+         *         so you can chain put calls together.
+         */
         public Editor putBoolean(String key, boolean value) {
             synchronized (this) {
                 mModified.put(key, value);
@@ -408,6 +528,15 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Mark in the editor that a preference value should be removed, which will be done
+         * in the actual preferences once commit() is called.
+         * Note that when committing back to the preferences, all removals are done first,
+         * regardless of whether you called remove before or after put methods on this editor.
+         * @param key The name of the preference to remove.
+         * @return Returns a reference to the same Editor object, so you can
+         *         chain put calls together.
+         */
         public Editor remove(String key) {
             synchronized (this) {
                 mModified.put(key, this);
@@ -415,6 +544,15 @@ final class Slink implements SharedPreferences {
             }
         }
 
+        /**
+         * Mark in the editor to remove all values from the preferences.
+         * Once commit is called, the only remaining preferences will be any that you have
+         * defined in this editor. Note that when committing back to the preferences, the clear
+         * is done first, regardless of whether you called clear before or after put methods
+         * on this editor.
+         * @return Returns a reference to the same Editor object, so you can chain
+         *         put calls together.
+         */
         public Editor clear() {
             synchronized (this) {
                 mClear = true;
@@ -422,6 +560,23 @@ final class Slink implements SharedPreferences {
             }
         }
 
+
+        /**
+         * Commit your preferences changes back from this Editor to the SharedPreferences object
+         * it is editing. This atomically performs the requested modifications, replacing whatever
+         * is currently in the SharedPreferences. Note that when two editors are modifying
+         * preferences at the same time, the last one to call apply wins. Unlike commit(), which
+         * writes its preferences out to persistent storage synchronously, apply() commits its
+         * changes to the in-memory SharedPreferences immediately but starts an asynchronous
+         * commit to disk and you won't be notified of any failures. If another editor on this
+         * SharedPreferences does a regular commit() while a apply() is still outstanding, the
+         * commit() will block until all async commits are completed as well as the commit itself.
+         * As SharedPreferences instances are singletons within a process, it's safe to replace any
+         * instance of commit() with apply() if you were already ignoring the return value. You
+         * don't need to worry about Android component lifecycles and their interaction with
+         * apply() writing to disk. The framework makes sure in-flight disk writes from apply()
+         * complete before switching states.
+         */
         public void apply() {
             final MemoryCommitResult mcr = commitToMemory();
             final Runnable awaitCommit = new Runnable() {
@@ -518,6 +673,16 @@ final class Slink implements SharedPreferences {
             return mcr;
         }
 
+
+        /**
+         * Commit your preferences changes back from this Editor to the SharedPreferences
+         * object it is editing. This atomically performs the requested modifications, replacing
+         * whatever is currently in the SharedPreferences.Note that when two editors are modifying
+         * preferences at the same time, the last one to call commit wins.
+         * If you don't care about the return value and you're using this from your application's
+         * main thread, consider using apply() instead.
+         * @return Returns true if the new values were successfully written to persistent storage.
+         */
         public boolean commit() {
             MemoryCommitResult mcr = commitToMemory();
             Slink.this.enqueueDiskWrite(
@@ -688,7 +853,7 @@ final class Slink implements SharedPreferences {
                         fileStream,
                         Entity.create(cipherEntity));
             } catch (IOException | CryptoInitializationException | KeyChainException e) {
-                Log.e (TAG, "writeToFile Couldnt get CypherOutputStream");
+                Log.e(TAG, "writeToFile Couldnt get CypherOutputStream");
                 return;
             }
 //
@@ -702,7 +867,7 @@ final class Slink implements SharedPreferences {
                 outputStream.write(map.getBytes());
                 outputStream.close();
             } catch (IOException e) {
-                Log.e (TAG, "writeToFile Couldnt write to file");
+                Log.e(TAG, "writeToFile Couldnt write to file");
                 return;
             }
 

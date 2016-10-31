@@ -34,3 +34,16 @@ dependencies {
 
 
 }
+
+task deleteJar(type: Delete) {
+    delete 'libs/Slink.jar'
+}
+
+task createJar(type: Copy) {
+    from('build/intermediates/bundles/release/')
+    into('libs/')
+    include('classes.jar')
+    rename('classes.jar', 'Slink.jar')
+}
+
+createJar.dependsOn(deleteJar, build)
