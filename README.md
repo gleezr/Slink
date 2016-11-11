@@ -1,6 +1,6 @@
-aSlink
+Slink
 ==================
-slink is a small library containing a wrapper / helper for Android's shared preferences.     
+Slink is a small library containing a wrapper / helper for Android's shared preferences.     
 This library gives you the option to write encrypted shared preferences data using the Facebook's Conceal library.
 
 Performance
