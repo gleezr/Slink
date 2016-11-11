@@ -1,12 +1,12 @@
 Slink
 ==================
 
-A small library containing a wrapper/helper for the shared preferences of Android.     
+A small library containing a wrapper / helper for the shared preferences of Android.     
 This library gives you an option to write encrypted shared preferences data using the Facebook's Conceal library.
 
 Performance
 =================
-Most of the other tools implementing secure shared preferences use encryption for each key and value you input separately.
+Most of the other tools implementing secured shared preferences use encryption for each key and value you input separately.
 Slink uses Facebook conceal to save the entire set of encrypted objects, saving you a lot of unnecessary performance overhead.
 
 How to get started?
@@ -20,7 +20,7 @@ To add the library to your project:
 
 Usage
 ==================
-This library implements the Android SharedPreferences /Editor interfaces.      
+This library implements the Android SharedPreferences / Editor interfaces.      
 For the documentation about the behavior of these interfaces please refer to the official Android documentation ([SharedPreferences][1]/[Editor][2]).
 
 Additionally, this library contains a class called SlinkManager which helps you retrieving your Shared Preferences instances (Slink instances)
