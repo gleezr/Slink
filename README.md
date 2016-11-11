@@ -22,7 +22,7 @@ Usage
 This library implements the Android SharedPreferences / Editor interfaces.      
 For the documentation about the behavior of these interfaces please refer to the official Android documentation ([SharedPreferences][1]/[Editor][2]).
 
-Additionally, this library contains a class called SlinkManager which helps you retrieving your Shared Preferences instances (Slink instances)
+Additionally, this library contains a class called SlinkManager which helps you retrieving your Shared Preferences instances.
 
 For example:
 ```Java
