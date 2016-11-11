@@ -5,7 +5,7 @@ This library gives you the option to write encrypted shared preferences data usi
 
 Performance
 =================
-Most of the other tools implementing secured shared preferences use encryption for each key and value you input separately.
+Most of other tools implementing secured shared preferences use encryption for each key and value you input separately.
 Slink uses Facebook's conceal to save the entire set of encrypted objects, saving you a lot of unnecessary boilerplate code and performance overhead.
 
 How to get started?
