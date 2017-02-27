@@ -1,9 +1,7 @@
 package com.gleezr.slink;
 
-
 import android.content.Context;
 import android.content.SharedPreferences;
-//import android.support.test.InstrumentationRegistry;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -20,7 +18,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +28,6 @@ import static java.lang.System.out;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
-
 /**
  * Instrumentation test, which will execute on an Android device.
  *
@@ -40,146 +36,123 @@ import static junit.framework.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public class SlinkTests {
 
-    static Context cntxt;
-    static SharedPreferences slnk;
-    static SharedPreferences.Editor edt;
+    static Context context;
+    static SharedPreferences slink;
+    static SharedPreferences.Editor editor;
     private static String FILE_NAME = "";
 
     @BeforeClass
     public static void useAppContext() throws Exception {
-        cntxt = InstrumentationRegistry.getTargetContext();
+        context = InstrumentationRegistry.getTargetContext();
 
-        FILE_NAME = cntxt.getFilesDir() + "Test4";
+        FILE_NAME = context.getFilesDir() + "Test4";
 
-        slnk = SlinkManager.getSlink(cntxt,  FILE_NAME);
+        slink = SlinkManager.getSlink(context,  FILE_NAME);
 
-        edt = slnk.edit();
+        editor = slink.edit();
     }
 
     @Test
-    public void saveIntegerValueUsingCommit()
-    {
-        edt.putInt("MyFirstInteger", 1);
+    public void saveIntegerValueUsingCommit() {
+        editor.putInt("MyFirstInteger", 1);
+        editor.commit();
 
-        edt.commit();
-
-        assertEquals(1,slnk.getInt("MyFirstInteger", 9));
+        assertEquals(1, slink.getInt("MyFirstInteger", 9));
     }
 
     @Test
-    public void saveIntegerValueUsingApply()
-    {
-        edt.putInt("MyFirstInteger", 1);
+    public void saveIntegerValueUsingApply() {
+        editor.putInt("MyFirstInteger", 1);
+        editor.apply();
 
-        edt.apply();
-
-        assertEquals(1,slnk.getInt("MyFirstInteger", 9));
+        assertEquals(1, slink.getInt("MyFirstInteger", 9));
     }
 
     @Test
-    public void saveFloatValue()
-    {
-        edt.putFloat("MyFirstFloat", 2.2f);
+    public void saveFloatValue() {
+        editor.putFloat("MyFirstFloat", 2.2f);
+        editor.apply();
 
-        edt.apply();
-
-        assertEquals(2.2f, slnk.getFloat("MyFirstFloat", 9.0f), 0f);
+        assertEquals(2.2f, slink.getFloat("MyFirstFloat", 9.0f), 0f);
     }
 
     @Test
-    public void saveStringValue()
-    {
-        edt.putString("MyFirstString", "FirstString");
+    public void saveStringValue() {
+        editor.putString("MyFirstString", "FirstString");
+        editor.apply();
 
-        edt.apply();
-
-        assertEquals("FirstString", slnk.getString("MyFirstString", ""));
+        assertEquals("FirstString", slink.getString("MyFirstString", ""));
     }
 
     @Test
-    public void saveLongValue()
-    {
-        edt.putLong("MyFirstLong", 11l);
+    public void saveLongValue() {
+        editor.putLong("MyFirstLong", 11l);
+        editor.apply();
 
-        edt.apply();
-
-        assertEquals(11l, slnk.getLong("MyFirstLong", 80l));
+        assertEquals(11l, slink.getLong("MyFirstLong", 80l));
     }
 
     @Test
-    public void saveBooleanValue()
-    {
-        edt.putBoolean("MyFirstBool", true);
+    public void saveBooleanValue() {
+        editor.putBoolean("MyFirstBool", true);
+        editor.apply();
 
-        edt.apply();
-
-        assertEquals(true, slnk.getBoolean("MyFirstBool", false));
+        assertEquals(true, slink.getBoolean("MyFirstBool", false));
     }
 
     @Test
-    public void saveStringSetValue()
-    {
-        Set<String> set = new HashSet<String>();
+    public void saveStringSetValue() {
+        Set<String> set = new HashSet<>();
 
         set.add("1");
         set.add("2");
 
-        edt.putStringSet("MyFirstStringSet",  set);
+        editor.putStringSet("MyFirstStringSet",  set);
+        editor.apply();
 
-        edt.apply();
-
-        Set<String> srs = slnk.getStringSet("MyFirstStringSet", null);
+        Set<String> srs = slink.getStringSet("MyFirstStringSet", null);
 
         assertTrue((srs.contains("1") && srs.contains("2")));
     }
 
     @Test
-    public void CheckIfClearCleareWithoutCommit()
-    {
-        edt.putInt("MyFirstInteger", 1);
+    public void checkIfClearCleareWithoutCommit() {
+        editor.putInt("MyFirstInteger", 1);
+        editor.clear();
 
-        edt.clear();
-
-        assertEquals(1,slnk.getInt("MyFirstInteger", 9));
+        assertEquals(1, slink.getInt("MyFirstInteger", 9));
     }
 
     @Test
-    public void CheckIfClearClearedBeforeIntegerPut()
-    {
-        edt.putInt("MyFirstInteger", 1);
+    public void checkIfClearClearedBeforeIntegerPut() {
+        editor.putInt("MyFirstInteger", 1);
+        editor.clear();
+        editor.commit();
 
-        edt.clear();
-
-        edt.commit();
-
-        assertEquals(1,slnk.getInt("MyFirstInteger", 9));
+        assertEquals(1, slink.getInt("MyFirstInteger", 9));
     }
 
     @Test
-    public void CheckIfClearCleared()
-    {
-        edt.putInt("MyFirstInteger", 1);
+    public void checkIfClearCleared() {
+        editor.putInt("MyFirstInteger", 1);
+        editor.commit();
+        editor.clear();
+        editor.commit();
 
-        edt.commit();
-
-        edt.clear();
-
-        edt.commit();
-
-        assertTrue(!slnk.contains("MyFirstInteger"));
+        assertTrue(!slink.contains("MyFirstInteger"));
     }
 
     @Test
     public void checkIfDataIsEncrypted() throws FileNotFoundException {
-        edt.clear();
+        editor.clear();
 
-        edt.commit();
+        editor.commit();
 
-        edt.putInt("MyInt", 1);
+        editor.putInt("MyInt", 1);
 
         File f = new File(FILE_NAME);
 
-        BufferedInputStream is = new BufferedInputStream(new FileInputStream(f), 16*1024);
+        BufferedInputStream is = new BufferedInputStream(new FileInputStream(f), 16 * 1024);
 
         int read;
         byte[] buffer = new byte[1024];
@@ -205,18 +178,12 @@ public class SlinkTests {
 
         boolean b = false;
 
-        try
-        {
+        try {
             Map<String, Object> mMap = new Gson().fromJson(preferencesString, stringStringMap);
-        }
-        catch(JsonSyntaxException e)
-        {
+        } catch(JsonSyntaxException e) {
            b = true;
         }
 
         assertEquals(true, b);
     }
-
-
-
 }

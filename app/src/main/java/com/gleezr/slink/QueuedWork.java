@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.gleezr.slink;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -28,15 +27,13 @@ import java.util.concurrent.Executors;
  * asynchronously so we'd have a mechanism to wait for the writes in
  * Activity.onPause and similar places, but we may use this mechanism
  * for other things in the future.
- *
- * @hide
  */
-public class QueuedWork {
+class QueuedWork {
 
     // The set of Runnables that will finish or wait on any async
     // activities started by the application.
     private static final ConcurrentLinkedQueue<Runnable> sPendingWorkFinishers =
-            new ConcurrentLinkedQueue<Runnable>();
+            new ConcurrentLinkedQueue<>();
 
     private static ExecutorService sSingleThreadExecutor = null; // lazy, guarded by class
 
@@ -44,7 +41,7 @@ public class QueuedWork {
      * Returns a single-thread Executor shared by the entire process,
      * creating it if necessary.
      */
-    public static ExecutorService singleThreadExecutor() {
+    static ExecutorService singleThreadExecutor() {
         synchronized (QueuedWork.class) {
             if (sSingleThreadExecutor == null) {
                 // TODO: can we give this single thread a thread name?
@@ -66,11 +63,11 @@ public class QueuedWork {
      * after an add().  The only time these Runnables are run is from
      * waitToFinish(), below.
      */
-    public static void add(Runnable finisher) {
+    static void add(Runnable finisher) {
         sPendingWorkFinishers.add(finisher);
     }
 
-    public static void remove(Runnable finisher) {
+    static void remove(Runnable finisher) {
         sPendingWorkFinishers.remove(finisher);
     }
 
@@ -82,7 +79,8 @@ public class QueuedWork {
      * BroadcastReceiver's onReceive, after Service command handling,
      * etc.  (so async work is never lost)
      */
-    public static void waitToFinish() {
+    @SuppressWarnings("unused")
+    static void waitToFinish() {
         Runnable toFinish;
         while ((toFinish = sPendingWorkFinishers.poll()) != null) {
             toFinish.run();
@@ -94,8 +92,8 @@ public class QueuedWork {
      * result is out of data as soon as you receive it, so be careful how you
      * use it.
      */
-    public static boolean hasPendingWork() {
+    @SuppressWarnings("unused")
+    static boolean hasPendingWork() {
         return !sPendingWorkFinishers.isEmpty();
     }
-
 }

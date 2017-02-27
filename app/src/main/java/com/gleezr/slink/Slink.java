@@ -13,21 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.gleezr.slink;
-
-
-import static java.lang.System.out;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.Nullable;
-import android.system.StructStat;
 import android.util.Log;
 
 import com.facebook.android.crypto.keychain.AndroidConceal;
@@ -35,10 +27,11 @@ import com.facebook.android.crypto.keychain.SharedPrefsBackedKeyChain;
 import com.facebook.crypto.Crypto;
 import com.facebook.crypto.CryptoConfig;
 import com.facebook.crypto.Entity;
-
 import com.facebook.crypto.exception.CryptoInitializationException;
 import com.facebook.crypto.exception.KeyChainException;
 import com.facebook.crypto.keychain.KeyChain;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -59,51 +52,49 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 
+import static java.lang.System.out;
+
 public final class Slink implements SharedPreferences {
     private static final String TAG = "Slink";
-    private static final boolean DEBUG = false;
+    private static final String ENCODING = "UTF-8";
 
     // Lock ordering rules:
-    //  - acquire Slink.this before EditorImpl.this
-    //  - acquire mWritingToDiskLock before EditorImpl.this
+    // - acquire Slink.this before EditorImpl.this
+    // - acquire mWritingToDiskLock before EditorImpl.this
 
     private final File mFile;
     private final File mBackupFile;
+
+    // Unused - need to implement modes.
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private final int mMode;
 
     private Map<String, Object> mMap;     // guarded by 'this'
     private int mDiskWritesInFlight = 0;  // guarded by 'this'
     private boolean mLoaded = false;      // guarded by 'this'
-    private long mStatTimestamp;          // guarded by 'this'
-    private long mStatSize;               // guarded by 'this'
     private String cipherEntity = "Properties";
     private Gson gson;
-    private Context context;
     private Crypto crypto;
-    private KeyChain keyChain;
     private final Object mWritingToDiskLock = new Object();
     private static final Object mContent = new Object();
     private final WeakHashMap<OnSharedPreferenceChangeListener, Object> mListeners =
-            new WeakHashMap<OnSharedPreferenceChangeListener, Object>();
-
+            new WeakHashMap<>();
 
     /**
-     * Excplicitly create a Slink instance.
-     * Unless particulary needed refer to the SlinkManager to get a Slink instance.
+     * Explicitly create a Slink instance.
+     * Unless particularly needed refer to the SlinkManager to get a Slink instance.
      * @param file The SharedPreferences file
-     * @param mode  Unused
+     * @param mode Unused
      * @param context The context of the calling activity
      */
+    @SuppressWarnings("WeakerAccess")
     public Slink(File file, int mode, Context context) {
-
         gson = new Gson();
 
         cipherEntity = cipherEntity + file.getName();
 
-        this.context = context;
-
-        // Creates a new Crypto valueect with default implementations of a key chain
-        keyChain = new SharedPrefsBackedKeyChain(this.context, CryptoConfig.KEY_256);
+        // Creates a new Crypto value with default implementations of a key chain
+        KeyChain keyChain = new SharedPrefsBackedKeyChain(context, CryptoConfig.KEY_256);
         crypto = AndroidConceal.get().createDefaultCrypto(keyChain);
         mFile = file;
         mBackupFile = makeBackupFile(file);
@@ -130,7 +121,9 @@ public final class Slink implements SharedPreferences {
                 return;
             }
             if (mBackupFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
                 mFile.delete();
+                //noinspection ResultOfMethodCallIgnored
                 mBackupFile.renameTo(mFile);
             }
         }
@@ -140,8 +133,6 @@ public final class Slink implements SharedPreferences {
             Log.w(TAG, "Attempt to read preferences file " + mFile + " without permission");
         }
 
-        Map map = null;
-        StructStat stat = null;
         if (mFile.canRead()) {
             BufferedInputStream str = null;
 
@@ -150,7 +141,7 @@ public final class Slink implements SharedPreferences {
             InputStream inputStream = null;
 
             try {
-                str = new BufferedInputStream(new FileInputStream(mFile), 16 * 1024);
+                str = new BufferedInputStream(new FileInputStream(mFile), 1024);
 
                 Gson gson = new Gson();
 
@@ -159,15 +150,14 @@ public final class Slink implements SharedPreferences {
                     inputStream = crypto.getCipherInputStream(str, e);
                     str = new BufferedInputStream(inputStream);
                 } catch (IOException | CryptoInitializationException | KeyChainException e) {
-                    Log.e(TAG, "loadFromDisk could not open inputstream to file");
+                    Log.e(TAG, "loadFromDisk could not open inputStream to file");
                     str.close();
-                    inputStream.close();
                     return;
                 }
 
                 // Read into a byte array.
                 int read;
-                byte[] buffer = new byte[16 * 1024];
+                byte[] buffer = new byte[1024];
 
                 // You must read the entire stream to completion.
                 // The verification is done at the end of the stream.
@@ -179,7 +169,7 @@ public final class Slink implements SharedPreferences {
                     out.write(buffer, 0, read);
                 }
 
-                String preferencesString = new String(buffer).trim();
+                String preferencesString = new String(buffer, ENCODING).trim();
 
                 Type stringStringMap = new TypeToken<HashMap<String, Object>>() { }.getType();
 
@@ -188,54 +178,32 @@ public final class Slink implements SharedPreferences {
                 Log.w(TAG, "getSharedPreferences", e);
             } finally {
                 try {
-                    str.close();
-                    inputStream.close();
+                    if (str != null) {
+                        str.close();
+                    }
+                    if (inputStream != null) {
+                        inputStream.close();
+                    }
                 } catch (IOException e) {
-                    Log.e(TAG, "loadFromDisk Couldnt close file");
-                    return;
+                    Log.e(TAG, "loadFromDisk Couldn't close file");
                 }
             }
         }
 
         synchronized (Slink.this) {
             mLoaded = true;
-            if (map != null) {
-                mMap = map;
-            } else {
-                mMap = new HashMap<>();
-            }
+//            if (map != null) {
+//                mMap = map;
+//            } else {
+//                mMap = new HashMap<>();
+//            }
+            mMap = new HashMap<>();
             notifyAll();
         }
     }
 
-    static File makeBackupFile(File prefsFile) {
+    private static File makeBackupFile(File prefsFile) {
         return new File(prefsFile.getPath() + ".bak");
-    }
-
-    void startReloadIfChangedUnexpectedly() {
-        synchronized (this) {
-            // TODO: wait for any pending writes to disk?
-            if (!hasFileChangedUnexpectedly()) {
-                return;
-            }
-            startLoadFromDisk();
-        }
-    }
-
-    // Has the file changed out from under us?  i.e. writes that
-    // we didn't instigate.
-    private boolean hasFileChangedUnexpectedly() {
-        synchronized (this) {
-            if (mDiskWritesInFlight > 0) {
-                // If we know we caused it, it's not unexpected.
-                if (DEBUG) {
-                    Log.d(TAG, "disk write in flight, not unexpected.");
-                }
-                return false;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -261,11 +229,11 @@ public final class Slink implements SharedPreferences {
     }
 
     private void awaitLoadedLocked() {
-        if (!mLoaded) {
+//        if (!mLoaded) {
             // Raise an explicit StrictMode onReadFromDisk for this
             // thread, since the real read will be in a different
             // thread and otherwise ignored by StrictMode.
-        }
+//        }
         while (!mLoaded) {
             try {
                 wait();
@@ -284,8 +252,7 @@ public final class Slink implements SharedPreferences {
     public Map<String, ?> getAll() {
         synchronized (this) {
             awaitLoadedLocked();
-            //noinspection unchecked
-            return new HashMap<String, Object>(mMap);
+            return new HashMap<>(mMap);
         }
     }
 
@@ -319,6 +286,7 @@ public final class Slink implements SharedPreferences {
     public Set<String> getStringSet(String key, @Nullable Set<String> defValues) {
         synchronized (this) {
             awaitLoadedLocked();
+            //noinspection unchecked
             Set<String> v = (Set<String>) mMap.get(key);
             return v != null ? v : defValues;
         }
@@ -421,19 +389,20 @@ public final class Slink implements SharedPreferences {
 
     // Return value from EditorImpl#commitToMemory()
     private static class MemoryCommitResult {
-        public boolean changesMade;  // any keys different?
-        public List<String> keysModified;  // may be null
-        public Set<OnSharedPreferenceChangeListener> listeners;  // may be null
-        public Map<?, ?> mapToWriteToDisk;
-        public final CountDownLatch writtenToDiskLatch = new CountDownLatch(1);
-        public volatile boolean writeToDiskResult = false;
+        boolean changesMade;  // any keys different?
+        List<String> keysModified;  // may be null
+        Set<OnSharedPreferenceChangeListener> listeners;  // may be null
+        Map<?, ?> mapToWriteToDisk;
+        final CountDownLatch writtenToDiskLatch = new CountDownLatch(1);
+        volatile boolean writeToDiskResult = false;
 
-        public void setDiskWriteResult(boolean result) {
+        void setDiskWriteResult(boolean result) {
             writeToDiskResult = result;
             writtenToDiskLatch.countDown();
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public final class EditorImpl implements Editor {
         private final Map<String, Object> mModified = new HashMap<>();
         private boolean mClear = false;
@@ -463,8 +432,7 @@ public final class Slink implements SharedPreferences {
          */
         public Editor putStringSet(String key, @Nullable Set<String> values) {
             synchronized (this) {
-                mModified.put(key,
-                        (values == null) ? null : new HashSet<String>(values));
+                mModified.put(key, (values == null) ? null : new HashSet<>(values));
                 return this;
             }
         }
@@ -560,7 +528,6 @@ public final class Slink implements SharedPreferences {
             }
         }
 
-
         /**
          * Commit your preferences changes back from this Editor to the SharedPreferences object
          * it is editing. This atomically performs the requested modifications, replacing whatever
@@ -619,16 +586,15 @@ public final class Slink implements SharedPreferences {
                     // in-flight write owns it.  Clone it before
                     // modifying it.
                     // noinspection unchecked
-                    mMap = new HashMap<String, Object>(mMap);
+                    mMap = new HashMap<>(mMap);
                 }
                 mcr.mapToWriteToDisk = mMap;
                 mDiskWritesInFlight++;
 
                 boolean hasListeners = mListeners.size() > 0;
                 if (hasListeners) {
-                    mcr.keysModified = new ArrayList<String>();
-                    mcr.listeners =
-                            new HashSet<OnSharedPreferenceChangeListener>(mListeners.keySet());
+                    mcr.keysModified = new ArrayList<>();
+                    mcr.listeners = new HashSet<>(mListeners.keySet());
                 }
 
                 synchronized (this) {
@@ -672,7 +638,6 @@ public final class Slink implements SharedPreferences {
             }
             return mcr;
         }
-
 
         /**
          * Commit your preferences changes back from this Editor to the SharedPreferences
@@ -756,7 +721,7 @@ public final class Slink implements SharedPreferences {
         // Typical #commit() path with fewer allocations, doing a write on
         // the current thread.
         if (isFromSyncCommit) {
-            boolean wasEmpty = false;
+            boolean wasEmpty;
             synchronized (Slink.this) {
                 wasEmpty = mDiskWritesInFlight == 1;
             }
@@ -780,7 +745,9 @@ public final class Slink implements SharedPreferences {
                 return null;
             }
 
+            //noinspection ResultOfMethodCallIgnored
             parent.setWritable(true);
+            //noinspection ResultOfMethodCallIgnored
             parent.setReadable(true);
 
 //            FileUtils.setPermissions(
@@ -816,6 +783,7 @@ public final class Slink implements SharedPreferences {
                     return;
                 }
             } else {
+                //noinspection ResultOfMethodCallIgnored
                 mFile.delete();
             }
         }
@@ -831,29 +799,26 @@ public final class Slink implements SharedPreferences {
                 return;
             }
 
-            Type stringStringMap = new TypeToken<HashMap<String, Object>>() {
-            }.getType();
+            Type stringStringMap = new TypeToken<HashMap<String, Object>>() { }.getType();
             String map = gson.toJson(mcr.mapToWriteToDisk, stringStringMap);
 
             // Check for whether the crypto functionality is available
-            // This might fail if Android does not load libaries correctly.
+            // This might fail if Android does not load libraries correctly.
             if (!crypto.isAvailable()) {
                 return;
             }
 
-            OutputStream fileStream = null;
+            OutputStream fileStream;
             fileStream = new BufferedOutputStream(str);
 
             // Creates an output stream which encrypts the data as
             // it is written to it and writes it out to the file.
-            OutputStream outputStream = null;
-
+            OutputStream outputStream;
             try {
-                outputStream = crypto.getCipherOutputStream(
-                        fileStream,
+                outputStream = crypto.getCipherOutputStream(fileStream,
                         Entity.create(cipherEntity));
             } catch (IOException | CryptoInitializationException | KeyChainException e) {
-                Log.e(TAG, "writeToFile Couldnt get CypherOutputStream");
+                Log.e(TAG, "writeToFile Couldn't get CypherOutputStream");
                 return;
             }
 //
@@ -864,15 +829,17 @@ public final class Slink implements SharedPreferences {
 
             try {
                 // Write plaintext to it.
-                outputStream.write(map.getBytes());
+                byte[] bytes = map.getBytes(ENCODING);
+                outputStream.write(bytes);
                 outputStream.close();
             } catch (IOException e) {
-                Log.e(TAG, "writeToFile Couldnt write to file");
+                Log.e(TAG, "writeToFile Couldn't write to file");
                 return;
             }
 
             str.close();
             // Writing was successful, delete the backup file if there is one.
+            //noinspection ResultOfMethodCallIgnored
             mBackupFile.delete();
             mcr.setDiskWriteResult(true);
             return;
