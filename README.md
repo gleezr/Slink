@@ -14,7 +14,7 @@ To add the library to your project:
 - Make sure you have JCenter in your Gradle repositories.
 - Add the following Gradle dependency to your build.gradle.
 ```Groovy
-  compile 'com.gleezr:slink:1.0.2'
+  compile 'com.gleezr:slink:1.0.3'
 ```
 
 Usage
