@@ -133,6 +133,7 @@ public final class Slink implements SharedPreferences {
             Log.w(TAG, "Attempt to read preferences file " + mFile + " without permission");
         }
 
+        Map map = null;
         if (mFile.canRead()) {
             BufferedInputStream str = null;
 
@@ -173,7 +174,7 @@ public final class Slink implements SharedPreferences {
 
                 Type stringStringMap = new TypeToken<HashMap<String, Object>>() { }.getType();
 
-                mMap = gson.fromJson(preferencesString, stringStringMap);
+                map = gson.fromJson(preferencesString, stringStringMap);
             } catch (IOException e) {
                 Log.w(TAG, "getSharedPreferences", e);
             } finally {
@@ -192,12 +193,11 @@ public final class Slink implements SharedPreferences {
 
         synchronized (Slink.this) {
             mLoaded = true;
-//            if (map != null) {
-//                mMap = map;
-//            } else {
-//                mMap = new HashMap<>();
-//            }
-            mMap = new HashMap<>();
+            if (map != null) {
+                mMap = map;
+            } else {
+                mMap = new HashMap<>();
+            }
             notifyAll();
         }
     }
@@ -650,8 +650,7 @@ public final class Slink implements SharedPreferences {
          */
         public boolean commit() {
             MemoryCommitResult mcr = commitToMemory();
-            Slink.this.enqueueDiskWrite(
-                    mcr, null /* sync write on this thread okay */);
+            Slink.this.enqueueDiskWrite(mcr, null /* sync write on this thread okay */);
             try {
                 mcr.writtenToDiskLatch.await();
             } catch (InterruptedException e) {
