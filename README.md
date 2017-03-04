@@ -12,7 +12,7 @@ How to get started?
 ==================
 To add the library to your project:
 - Make sure you have JCenter in your Gradle repositories.
-- Add the following Gradle dependency to your build.gradle.
+- Add the following Gradle dependency to your build.gradle:
 ```Groovy
   compile 'com.gleezr:slink:1.0.3'
 ```
@@ -33,14 +33,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        SharedPreferences sharedprefs = SlinkManager.getSlink(this, "MySharedPrefrences");
+        SharedPreferences prefs = SlinkManager.getSlink(this, "MySharedPrefrences");
 
         // Gets the editor file which helps you stage the changes
-        SharedPreferences.Editor editor = sharedprefs.edit();
+        SharedPreferences.Editor editor = prefs.edit();
 
         editor.putInt("MyInteger", 69).apply();
 
-        int myInteger = sharedprefs.getInt("MyInteger", -1);
+        int myInteger = prefs.getInt("MyInteger", -1);
     }
 }
 ```
